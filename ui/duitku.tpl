@@ -43,6 +43,7 @@
                         <pre>/ip hotspot walled-garden
 add dst-host=duitku.com
 add dst-host=*.duitku.com</pre>
+<small id="emailHelp" class="form-text text-muted">Set Telegram Bot to get any error and notification</small>
                 </div>
             </div>
 

@@ -2,7 +2,7 @@
 
 
 /**
- * PHP Mikrotik Billing (https://ibnux.github.io/phpmixbill/)
+ * PHP Mikrotik Billing (https://github.com/hotspotbilling/phpnuxbill/)
  *
  * Payment Gateway duitku.com
  **/
@@ -19,7 +19,7 @@ function duitku_validate_config()
 function duitku_show_config()
 {
     global $ui, $config;
-    $ui->assign('_title', 'Duitku - Payment Gateway - ' . $config['CompanyName']);
+    $ui->assign('_title', 'Duitku - Payment Gateway');
     $ui->assign('channels', json_decode(file_get_contents('system/paymentgateway/channel_duitku.json'), true));
     $ui->display('duitku.tpl');
 }
@@ -69,7 +69,7 @@ function duitku_create_transaction($trx, $user)
 
     $channels = json_decode(file_get_contents('system/paymentgateway/channel_duitku.json'), true);
     if (!in_array($routes[4], explode(",", $config['duitku_channel']))) {
-        $ui->assign('_title', 'Duitku Channel - ' . $config['CompanyName']);
+        $ui->assign('_title', 'Duitku Channel');
         $ui->assign('channels', $channels);
         $ui->assign('duitku_channels', explode(",", $config['duitku_channel']));
         $ui->assign('path', $routes['2'] . '/' . $routes['3']);

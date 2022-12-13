@@ -3,7 +3,7 @@
 <form class="form-horizontal" method="post" role="form" action="{$_url}paymentgateway/duitku" >
     <div class="row">
         <div class="col-sm-12 col-md-12">
-            <div class="panel panel-default panel-hovered panel-stacked mb30">
+            <div class="panel panel-primary panel-hovered panel-stacked mb30">
                 <div class="panel-heading">DUITKU</div>
                 <div class="panel-body">
                     <div class="form-group">

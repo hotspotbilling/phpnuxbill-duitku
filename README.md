@@ -1,6 +1,6 @@
 # Payment gateway Duitku
 
-payment gateway Duitku untuk PHPMixBill
+payment gateway Duitku untuk PHPNuxBill
 
 ## instalasi
 

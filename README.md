@@ -2,6 +2,8 @@
 
 payment gateway Duitku untuk PHPNuxBill
 
+[Download](https://github.com/hotspotbilling/phpnuxbill-duitku/archive/refs/heads/master.zip)
+
 ## instalasi
 
 Copy **duitku.php** dan **channel_duitku.json** ke folder **system/paymentgateway/**

@@ -11,7 +11,7 @@ function duitku_validate_config()
 {
     global $config;
     if (empty($config['duitku_merchant_key'])) {
-        sendTelegram("Duitku payment gateway not configured");
+        Message::sendTelegram("Duitku payment gateway not configured");
         r2(U . 'order/package', 'w', Lang::T("Admin has not yet setup Duitku payment gateway, please tell admin"));
     }
 }
@@ -101,7 +101,7 @@ function duitku_create_transaction($trx, $user)
     $result = json_decode(Http::postJsonData(duitku_get_server() . 'v2/inquiry', $json), true);
 
     if (empty($result['paymentUrl'])) {
-        sendTelegram("Duitku payment failed\n\n" . json_encode($result, JSON_PRETTY_PRINT));
+        Message::sendTelegram("Duitku payment failed\n\n" . json_encode($result, JSON_PRETTY_PRINT));
         r2(U . 'order/package', 'e', Lang::T("Failed to create transaction."));
     }
     $d = ORM::for_table('tbl_payment_gateway')
@@ -133,7 +133,7 @@ function duitku_get_status($trx, $user)
     ];
     $result = json_decode(Http::postJsonData(duitku_get_server() . 'transactionStatus', $json), true);
     if ($result['reference'] != $trx['gateway_trx_id']) {
-        sendTelegram("Duitku payment status failed\n\n" . json_encode($result, JSON_PRETTY_PRINT));
+        Message::sendTelegram("Duitku payment status failed\n\n" . json_encode($result, JSON_PRETTY_PRINT));
         r2(U . "order/view/" . $trx['id'], 'w', Lang::T("Payment check failed."));
     }
     if ($result['statusCode'] == '01') {

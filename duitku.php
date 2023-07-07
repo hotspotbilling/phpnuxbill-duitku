@@ -159,6 +159,13 @@ function duitku_get_status($trx, $user)
     }
 }
 
+// callback
+function duitku_payment_notification()
+{
+    // ignore it, let user check it from payment page
+    die('OK');
+}
+
 function duitku_get_server()
 {
     global $_app_stage;

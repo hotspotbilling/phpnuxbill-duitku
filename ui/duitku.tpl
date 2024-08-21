@@ -1,4 +1,4 @@
-{include file="user-ui/header.tpl"}
+{include file="sections/header.tpl"}
 
 <form class="form-horizontal" method="post" role="form" action="{$_url}paymentgateway/duitku" >
     <div class="row">
@@ -50,4 +50,5 @@ add dst-host=*.duitku.com</pre>
         </div>
     </div>
 </form>
-{include file="user-ui/footer.tpl"}
+
+{include file="sections/footer.tpl"}

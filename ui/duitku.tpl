@@ -1,4 +1,4 @@
-{include file="sections/header.tpl"}
+{include file="user-ui/header.tpl"}
 
 <form class="form-horizontal" method="post" role="form" action="{$_url}paymentgateway/duitku" >
     <div class="row">
@@ -20,7 +20,7 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="col-md-2 control-label">Url Callback Proyek</label>
+                        <label class="col-md-2 control-label">{Lang::T('Url Callback Proyek')}</label>
                         <div class="col-md-6">
                             <input type="text" readonly class="form-control" onclick="this.select()" value="{$_url}callback/duitku">
                             <a href="https://duitku.com/merchant/Project" target="_blank" class="help-block">https://duitku.com/merchant/Project</a>
@@ -43,11 +43,11 @@
                         <pre>/ip hotspot walled-garden
 add dst-host=duitku.com
 add dst-host=*.duitku.com</pre>
-<small id="emailHelp" class="form-text text-muted">Set Telegram Bot to get any error and notification</small>
+<small id="emailHelp" class="form-text text-muted">{Lang::T('Set Telegram Bot to get any error and notification')}</small>
                 </div>
             </div>
 
         </div>
     </div>
 </form>
-{include file="sections/footer.tpl"}
+{include file="user-ui/footer.tpl"}

@@ -10,7 +10,7 @@
 function duitku_validate_config()
 {
     global $config;
-    if (empty($config['duitku_merchant_key'])) {
+    if (empty($config['duitku_merchant_key']) || empty($config['duitku_merchant_id'])) {
         Message::sendTelegram("Duitku payment gateway not configured");
         r2(U . 'order/package', 'w', Lang::T("Admin has not yet setup Duitku payment gateway, please tell admin"));
     }
@@ -143,6 +143,20 @@ function duitku_get_status($trx, $user)
             r2(U . "order/view/" . $trx['id'], 'd', Lang::T("Failed to activate your Package, try again later."));
         }
 
+    	// ngambil nomor invoice dr tbl_transactions
+		$inv = null;
+        $methodWant = 'duitku - ' . $trx['payment_channel'];
+        $invQ = ORM::for_table('tbl_transactions')
+            ->where('user_id', (int)$user['id'])
+            ->where('price', (int)$trx['price'])
+            ->where('method', $methodWant)
+            ->where_like('invoice', 'INV-%')
+            ->order_by_desc('id');
+		$inv = $invQ->find_one();
+		if ($inv && empty($trx->trx_invoice)) {
+		    $trx->trx_invoice = $inv['invoice'];
+		}
+
         $trx->pg_paid_response = json_encode($result);
         $trx->paid_date = date('Y-m-d H:i:s');
         $trx->status = 2;
@@ -159,11 +173,99 @@ function duitku_get_status($trx, $user)
     }
 }
 
+// helper
+function _r2_if_not_callback($url, $type, $msg) {
+    if (defined('IS_GATEWAY_CALLBACK') && IS_GATEWAY_CALLBACK) {
+        return; // jangan redirect/exit saat dari callback
+    }
+    r2($url, $type, $msg);
+}
+
 // callback
 function duitku_payment_notification()
 {
-    // ignore it, let user check it from payment page
-    die('OK');
+    http_response_code(200); // hindari retry dari Duitku
+
+    // log 1x aja (cuman buat error/gating)
+    $logOnce = function (string $title, array $data = []) {
+        static $sent = false; if ($sent) return;
+        foreach ($data as $k => $v) if (is_array($v) || is_object($v)) $data[$k] = json_encode($v, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+        $msg = "[DUITKU CB] {$title}\nTime: " . date('Y-m-d H:i:s');
+        foreach ($data as $k => $v) $msg .= "\n{$k}: {$v}";
+        if (strlen($msg) > 3500) $msg = substr($msg, 0, 3500).'…(truncated)';
+        if (class_exists('Message')) Message::sendTelegram($msg);
+        $sent = true;
+    };
+
+    // parse payload (x-www-form-urlencoded / JSON fallback)
+    $ct  = $_SERVER['CONTENT_TYPE'] ?? ($_SERVER['HTTP_CONTENT_TYPE'] ?? '');
+    $raw = @file_get_contents('php://input');
+    $post = $_POST;
+    if (empty($post)) {
+        if (stripos($ct, 'application/json') !== false) $post = json_decode($raw, true) ?: [];
+        else parse_str($raw, $post);
+    }
+
+    // minimal fields
+    foreach (['merchantCode','amount','merchantOrderId','resultCode','signature'] as $k) {
+        if (!isset($post[$k])) { $logOnce('Missing field', ['field'=>$k]); echo 'OK'; return; }
+    }
+
+    // validasi signature: md5(merchantCode + amount + merchantOrderId + apiKey)
+    global $config;
+    $apiKey = (string)($config['duitku_merchant_key'] ?? '');
+    $expected = md5($post['merchantCode'].$post['amount'].$post['merchantOrderId'].$apiKey);
+    if (strcasecmp($expected, (string)$post['signature']) !== 0) {
+        $logOnce('Signature mismatch', ['merchantOrderId'=>$post['merchantOrderId']]);
+        echo 'OK'; return;
+    }
+
+    // key reference -> gateway_trx_id
+    $reference = (string)($post['reference'] ?? '');
+    if ($reference === '') { $logOnce('Reference empty'); echo 'OK'; return; }
+
+    // ngambil transaksi
+    $trx = ORM::for_table('tbl_payment_gateway')
+        ->where('gateway','duitku')
+        ->where('gateway_trx_id',$reference)
+        ->order_by_desc('id')
+        ->find_one();
+    if (!$trx) { $logOnce('Transaction not found', ['reference'=>$reference]); echo 'OK'; return; }
+
+    // local gating: skip jika sudah paid / invoice sudah ada biar gak recharge berkali" waktu resend callback di pg (tanpa log)
+    if ((string)$trx['status'] === '2' || (string)$trx['status'] === 'paid' || !empty($trx['trx_invoice'])) {
+        echo 'OK'; return;
+    }
+
+    // ambil user (ORM)
+    $user = null;
+    if (!empty($trx['user_id'])) {
+        $user = ORM::for_table('tbl_customers')->find_one((int)$trx['user_id']);
+    } elseif (!empty($trx['username'])) {
+        $user = ORM::for_table('tbl_customers')->where('username',$trx['username'])->find_one();
+    }
+    if (!$user) { $logOnce('User not found', ['user_id'=>$trx['user_id'], 'username'=>$trx['username']]); echo 'OK'; return; }
+
+    // trigger finishing lewat helper existing (ORM object)
+    if (function_exists('duitku_get_status')) {
+        if (!defined('IS_GATEWAY_CALLBACK')) define('IS_GATEWAY_CALLBACK', true);
+        try {
+            ob_start();
+            duitku_get_status($trx, $user);
+            ob_end_clean();
+        } catch (Throwable $e) {
+            $logOnce('Finishing error', ['trxId'=>$trx['id'], 'err'=>$e->getMessage()]);
+            echo 'OK'; return;
+        }
+
+        // cek hasil akhir: kalau belum berubah, kirim log kalau sukses, kayak biasa aja 
+        $fresh = ORM::for_table('tbl_payment_gateway')->find_one($trx['id']);
+        $ok = ($fresh && ((string)$fresh['status'] === '2' || !empty($fresh['trx_invoice'])));
+        if (!$ok) { $logOnce('Finishing did not mark paid', ['trxId'=>$trx['id']]); }
+    } else {
+        $logOnce('Helper duitku_get_status not found');
+    }
+    echo 'OK';
 }
 
 function duitku_get_server()
